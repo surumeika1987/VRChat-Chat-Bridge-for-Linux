@@ -93,7 +93,8 @@ impl Ui {
             let text = text.to_string();
             let cloned_tx = cloned_tx.clone();
             tokio::spawn(async move {
-                cloned_tx.send(OSCCommand::SetTyping { active: true }).await;
+                // TODO 送信回数が多すぎるとOSCがバグるので対処
+                // cloned_tx.send(OSCCommand::SetTyping { active: true }).await;
                 cloned_tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await;
             });
         });

@@ -20,7 +20,7 @@ async fn main() -> Result<()> {
     }
 
     let (ipc_tx, mut ipc_rx) = mpsc::channel(32);
-    let (osc_tx, mut osc_rx) = mpsc::channel(32);
+    let (osc_tx, mut osc_rx) = mpsc::channel(256);
 
     let ipc_server = IPCServer::new(ipc_tx);
 
