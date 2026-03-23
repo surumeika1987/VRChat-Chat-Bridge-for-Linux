@@ -1,0 +1,38 @@
+import { VerticalBox, LineEdit, Button } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+    width: 320px;
+    height: 160px;
+    title: "Slint Test";
+
+    in-out property <string> input_text: "";
+
+    callback submit(string);
+    callback editing(string);
+
+    VerticalBox {
+        padding: 12px;
+        spacing: 8px;
+
+        LineEdit {
+            text <=> root.input_text;
+            placeholder-text: "文字を入力";
+
+            edited(text) => {
+                root.editing(text);
+            }
+
+            accepted(text) => {
+                root.submit(text);
+            }
+        }
+
+        Button {
+            text: "送信";
+            clicked => {
+                root.submit(input_text);
+            }
+        }
+    }
+}
+
