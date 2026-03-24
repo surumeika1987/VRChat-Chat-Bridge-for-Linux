@@ -10,7 +10,9 @@ use crate::{
 
 slint::include_modules!();
 
-pub struct Ui;
+pub struct Ui {
+    ui: MainWindow
+}
 
 
 impl Ui {
@@ -19,8 +21,6 @@ impl Ui {
         let input_text = Arc::new(Mutex::new(String::new()));
         const CLEAR_COUNT: u8 = 3;
         let counter = Arc::new(Mutex::new(0));
-
-        Ui::spawn_ui_command_bridge(&ui, rx);
 
         let cloned_input_text = Arc::clone(&input_text);
         ui.on_editing(move |text| {
@@ -84,14 +84,18 @@ impl Ui {
             }
         });
 
-        Ok(Ui)
+        let ui = Ui { ui };
+
+        ui.spawn_ui_command_bridge(rx);
+
+        Ok(ui)
     }
 
     fn spawn_ui_command_bridge(
-        ui: &MainWindow,
+        &self,
         mut rx: mpsc::Receiver<IPCCommand>,
     ) {
-        let weak = ui.as_weak();
+        let weak = self.ui.as_weak();
         let mut visible = false;
 
         tokio::spawn(async move {

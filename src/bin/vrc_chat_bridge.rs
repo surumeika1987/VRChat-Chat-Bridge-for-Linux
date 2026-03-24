@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
 
     OSCManager::new(osc_rx).await?;
     
-    Ui::new(osc_tx, ipc_rx)?;
+    let _ui = Ui::new(osc_tx, ipc_rx)?;
 
     slint::run_event_loop_until_quit()?;
 
