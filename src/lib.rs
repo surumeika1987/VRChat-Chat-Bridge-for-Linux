@@ -89,6 +89,8 @@ impl Ui {
     pub fn new(tx: mpsc::Sender<OSCCommand>, rx: mpsc::Receiver<IPCCommand>) -> Result<Self> {
         let ui = MainWindow::new()?;
         let input_text = Arc::new(Mutex::new(String::new()));
+        const CLEAR_COUNT: u8 = 3;
+        let counter = Arc::new(Mutex::new(0));
 
         Ui::spawn_ui_command_bridge(&ui, rx);
 
@@ -101,6 +103,7 @@ impl Ui {
         });
 
         let cloned_input_text = Arc::clone(&input_text);
+        let cloned_counter = Arc::clone(&counter);
         let cloned_tx = tx.clone();
         tokio::spawn(async move {
             loop {
@@ -108,7 +111,25 @@ impl Ui {
                     cloned_input_text.lock().unwrap().clone()
                 };
 
-                if !text.trim().is_empty() {
+                if text.trim().is_empty() {
+                    let mut is_clear = false;
+                    {
+                        let mut counter = cloned_counter.lock().unwrap();
+                        if *counter == CLEAR_COUNT {
+                            *counter = 0;
+                            is_clear = true;
+                        }
+                        *counter += 1;
+                    }
+                    if is_clear {
+                        cloned_tx
+                            .send(
+                                OSCCommand::SendChat{ 
+                                    contents: "".to_string(),
+                                    immediately: true,
+                                }).await;
+                    }
+                } else {
                     cloned_tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await;
                 }
 
@@ -117,6 +138,8 @@ impl Ui {
         });
 
         let weak = ui.as_weak();
+        let cloned_counter = Arc::clone(&counter);
+        let cloned_input_text = Arc::clone(&input_text);
         let cloned_tx = tx.clone();
         ui.on_submit(move |text| {
             let text = text.to_string();
@@ -124,6 +147,11 @@ impl Ui {
             tokio::spawn(async move {
                 cloned_tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await;
             });
+            let mut counter = cloned_counter.lock().unwrap();
+            *counter = 0;
+            let mut input_text = cloned_input_text.lock().unwrap();
+            *input_text = String::new();
+
             if let Some(ui) = weak.upgrade() {
                 ui.set_input_text("".into());
             }
