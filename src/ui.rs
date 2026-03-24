@@ -10,9 +10,7 @@ use crate::{
 
 slint::include_modules!();
 
-pub struct Ui{
-    ui: MainWindow,
-}
+pub struct Ui;
 
 
 impl Ui {
@@ -56,10 +54,10 @@ impl Ui {
                                 OSCCommand::SendChat{ 
                                     contents: "".to_string(),
                                     immediately: true,
-                                }).await;
+                                }).await.unwrap();
                     }
                 } else {
-                    cloned_tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await;
+                    cloned_tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await.unwrap();
                 }
 
                 tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
@@ -74,7 +72,7 @@ impl Ui {
             let text = text.to_string();
             let cloned_tx = cloned_tx.clone();
             tokio::spawn(async move {
-                cloned_tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await;
+                cloned_tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await.unwrap();
             });
             let mut counter = cloned_counter.lock().unwrap();
             *counter = 0;
@@ -86,7 +84,7 @@ impl Ui {
             }
         });
 
-        Ok(Ui { ui })
+        Ok(Ui)
     }
 
     fn spawn_ui_command_bridge(

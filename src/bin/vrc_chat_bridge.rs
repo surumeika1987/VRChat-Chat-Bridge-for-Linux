@@ -27,14 +27,14 @@ async fn main() -> Result<()> {
         }
     }
 
-    let (ipc_tx, mut ipc_rx) = mpsc::channel(32);
-    let (osc_tx, mut osc_rx) = mpsc::channel(256);
+    let (ipc_tx, ipc_rx) = mpsc::channel(32);
+    let (osc_tx, osc_rx) = mpsc::channel(256);
 
-    let ipc_server = IPCServer::new(ipc_tx);
+    IPCServer::new(ipc_tx)?;
 
-    let osc = OSCManager::new(osc_rx).await?;
+    OSCManager::new(osc_rx).await?;
     
-    let ui = Ui::new(osc_tx, ipc_rx);
+    Ui::new(osc_tx, ipc_rx)?;
 
     slint::run_event_loop_until_quit()?;
 
