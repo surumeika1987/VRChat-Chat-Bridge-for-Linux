@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -9,6 +11,7 @@ use vrchat_osc::{
     rosc::{OscMessage, OscPacket, OscType},
     ServiceType, VRChatOSC,
 };
+use slint::ComponentHandle;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -85,18 +88,32 @@ pub struct Ui{
 impl Ui {
     pub fn new(tx: mpsc::Sender<OSCCommand>, rx: mpsc::Receiver<IPCCommand>) -> Result<Self> {
         let ui = MainWindow::new()?;
+        let input_text = Arc::new(Mutex::new(String::new()));
 
         Ui::spawn_ui_command_bridge(&ui, rx);
 
-        let cloned_tx = tx.clone();
+        let weak = ui.as_weak();
+        let cloned_input_text = Arc::clone(&input_text);
         ui.on_editing(move |text| {
             let text = text.to_string();
-            let cloned_tx = cloned_tx.clone();
-            tokio::spawn(async move {
-                // TODO 送信回数が多すぎるとOSCがバグるので対処
-                cloned_tx.send(OSCCommand::SetTyping { active: true }).await;
-                //cloned_tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await;
-            });
+            let mut input_text = cloned_input_text.lock().unwrap();
+            *input_text = text;
+        });
+
+        let cloned_input_text = Arc::clone(&input_text);
+        let cloned_tx = tx.clone();
+        tokio::spawn(async move {
+            loop {
+                let text = {
+                    cloned_input_text.lock().unwrap().clone()
+                };
+
+                if !text.trim().is_empty() {
+                    cloned_tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await;
+                }
+
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+            }
         });
 
         let weak = ui.as_weak();
@@ -105,7 +122,6 @@ impl Ui {
             let text = text.to_string();
             let cloned_tx = cloned_tx.clone();
             tokio::spawn(async move {
-                cloned_tx.send(OSCCommand::SetTyping { active: false }).await;
                 cloned_tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await;
             });
             if let Some(ui) = weak.upgrade() {
