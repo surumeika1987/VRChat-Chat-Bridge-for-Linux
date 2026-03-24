@@ -1,4 +1,12 @@
-use vrchat_chat_bridge::{IPCCommand, IPCClient, IPCServer, Ui, OSCManager};
+use vrchat_chat_bridge::{
+    ipc::{
+        IPCCommand,
+        client::IPCClient,
+        server::IPCServer,
+    },
+    osc::OSCManager,
+    ui::Ui,
+};
 use anyhow::Result;
 use tokio::sync::mpsc;
 use std::env;
@@ -24,9 +32,9 @@ async fn main() -> Result<()> {
 
     let ipc_server = IPCServer::new(ipc_tx);
 
-    let ui = Ui::new(osc_tx, ipc_rx);
-
     let osc = OSCManager::new(osc_rx).await?;
+    
+    let ui = Ui::new(osc_tx, ipc_rx);
 
     slint::run_event_loop_until_quit()?;
 
