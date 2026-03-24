@@ -1,5 +1,6 @@
 # VRChat Chat Bridge for Linux
 Linux上での日本語のチャットを可能にします。
+![Image](https://github.com/user-attachments/assets/e1802e54-0590-4886-a1b8-d6a91165bbb5)
 
 ## 使用方法
 vrc_chat_bridgeを起動します。このプログラムはIPC通信を利用しています。  
