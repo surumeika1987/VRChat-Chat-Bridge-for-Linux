@@ -6,6 +6,7 @@ export component MainWindow inherits Window {
     title: "vrc_chat_bridge";
 
     in-out property <string> input_text: "";
+    out property <int> input_length: input_text.character-count;
 
     callback submit(string);
     callback editing(string);
@@ -25,6 +26,10 @@ export component MainWindow inherits Window {
             accepted(text) => {
                 root.submit(text);
             }
+        }
+
+        Text {
+            text: root.input_length + "/140";
         }
 
         Button {
