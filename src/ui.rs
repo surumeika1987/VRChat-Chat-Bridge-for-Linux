@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::sync::{ Arc, Mutex };
 use anyhow::Result;
 use tokio::{
@@ -15,7 +16,7 @@ slint::include_modules!();
 /// ドロップされるとGUIは閉じます。
 pub struct Ui {
     #[allow(dead_code)]
-    ui: Arc<MainWindow>
+    ui: Rc<MainWindow>
 }
 
 
@@ -23,7 +24,7 @@ impl Ui {
     const CLEAR_COUNT: u8 = 3;
 
     pub fn new(tx: mpsc::Sender<OSCCommand>, rx: mpsc::Receiver<IPCCommand>) -> Result<Self> {
-        let ui = Arc::new(MainWindow::new()?);
+        let ui = Rc::new(MainWindow::new()?);
         let input_text = Arc::new(Mutex::new(String::new()));
         let counter = Arc::new(Mutex::new(0));
 
@@ -54,7 +55,7 @@ impl Ui {
             }
         });
 
-        let cloned_ui = Arc::clone(&ui);
+        let cloned_ui = Rc::clone(&ui);
         Self::spawn_ui_ipc_command_bridge(cloned_ui, rx);
 
         let cloned_counter = Arc::clone(&counter);
@@ -65,7 +66,7 @@ impl Ui {
     }
 
     fn spawn_ui_ipc_command_bridge(
-        ui: Arc<MainWindow>,
+        ui: Rc<MainWindow>,
         mut rx: mpsc::Receiver<IPCCommand>,
     ) {
         let mut visible = false;
