@@ -11,11 +11,15 @@ export component MainWindow inherits Window {
     callback submit(string);
     callback editing(string);
 
+    public function focus_input() {
+        input.focus();
+    }
+
     VerticalBox {
         padding: 12px;
         spacing: 8px;
 
-        LineEdit {
+        input := LineEdit {
             text <=> root.input_text;
             placeholder-text: "文字を入力";
 

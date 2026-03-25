@@ -1,7 +1,7 @@
 use std::sync::{ Arc, Mutex };
 use anyhow::Result;
 use tokio::{
-    sync::mpsc,
+    sync::mpsc
 };
 use crate::{
     osc::OSCCommand,
@@ -76,12 +76,13 @@ impl Ui {
                     IPCCommand::Show => {
                         let _ = weak.upgrade_in_event_loop(|ui| {
                             let _ = ui.show();
+                            ui.invoke_focus_input();
                         });
                         visible = true;
                     }
                     IPCCommand::Hide => {
                         let _ = weak.upgrade_in_event_loop(|ui| {
-                            let _ = ui.show();
+                            let _ = ui.hide();
                         });
                         visible = false;
                     }
@@ -90,6 +91,7 @@ impl Ui {
                         let _ = weak.upgrade_in_event_loop(move |ui| {
                             if next {
                                 let _ = ui.show();
+                                ui.invoke_focus_input();
                             } else {
                                 let _ = ui.hide();
                             }
