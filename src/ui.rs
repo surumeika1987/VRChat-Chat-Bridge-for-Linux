@@ -10,16 +10,21 @@ use crate::{
 
 slint::include_modules!();
 
+/// UIウィンドウの生存期間を管理する型。
+/// このインスタンスが保持されている間、GUIは表示されます。
+/// ドロップされるとGUIは閉じます。
 pub struct Ui {
-    ui: MainWindow
+    #[allow(dead_code)]
+    ui: Arc<MainWindow>
 }
 
 
 impl Ui {
+    const CLEAR_COUNT: u8 = 3;
+
     pub fn new(tx: mpsc::Sender<OSCCommand>, rx: mpsc::Receiver<IPCCommand>) -> Result<Self> {
-        let ui = MainWindow::new()?;
+        let ui = Arc::new(MainWindow::new()?);
         let input_text = Arc::new(Mutex::new(String::new()));
-        const CLEAR_COUNT: u8 = 3;
         let counter = Arc::new(Mutex::new(0));
 
         let cloned_input_text = Arc::clone(&input_text);
@@ -27,41 +32,6 @@ impl Ui {
             let text = text.to_string();
             let mut input_text = cloned_input_text.lock().unwrap();
             *input_text = text;
-        });
-
-        let cloned_input_text = Arc::clone(&input_text);
-        let cloned_counter = Arc::clone(&counter);
-        let cloned_tx = tx.clone();
-        tokio::spawn(async move {
-            loop {
-                let text = {
-                    cloned_input_text.lock().unwrap().clone()
-                };
-
-                if text.trim().is_empty() {
-                    let mut is_clear = false;
-                    {
-                        let mut counter = cloned_counter.lock().unwrap();
-                        if *counter == CLEAR_COUNT {
-                            *counter = 0;
-                            is_clear = true;
-                        }
-                        *counter += 1;
-                    }
-                    if is_clear {
-                        cloned_tx
-                            .send(
-                                OSCCommand::SendChat{ 
-                                    contents: "".to_string(),
-                                    immediately: true,
-                                }).await.unwrap();
-                    }
-                } else {
-                    cloned_tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await.unwrap();
-                }
-
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-            }
         });
 
         let weak = ui.as_weak();
@@ -84,20 +54,22 @@ impl Ui {
             }
         });
 
-        let ui = Ui { ui };
+        let cloned_ui = Arc::clone(&ui);
+        Self::spawn_ui_ipc_command_bridge(cloned_ui, rx);
 
-        ui.spawn_ui_command_bridge(rx);
+        let cloned_counter = Arc::clone(&counter);
+        let cloned_input_text = Arc::clone(&input_text);
+        Self::spawn_check_input_text(tx, cloned_input_text, cloned_counter);
 
-        Ok(ui)
+        Ok(Ui { ui })
     }
 
-    fn spawn_ui_command_bridge(
-        &self,
+    fn spawn_ui_ipc_command_bridge(
+        ui: Arc<MainWindow>,
         mut rx: mpsc::Receiver<IPCCommand>,
     ) {
-        let weak = self.ui.as_weak();
         let mut visible = false;
-
+        let weak = ui.as_weak();
         tokio::spawn(async move {
             while let Some(cmd) = rx.recv().await {
                 match cmd {
@@ -125,6 +97,44 @@ impl Ui {
                         visible = next;
                     }
                 }
+            }
+        });
+    }
+
+    fn spawn_check_input_text(
+        tx: mpsc::Sender<OSCCommand>,
+        input_text: Arc<Mutex<String>>,
+        counter: Arc<Mutex<u8>>, 
+    ) {
+        tokio::spawn(async move {
+            loop {
+                let text = {
+                    input_text.lock().unwrap().clone()
+                };
+
+                if text.trim().is_empty() {
+                    let is_clear = {
+                        let mut counter = counter.lock().unwrap();
+                        if *counter == Self::CLEAR_COUNT {
+                            *counter = 0;
+                            return true;
+                        }
+                        *counter += 1;
+
+                        false
+                    };
+                    if is_clear {
+                        tx.send(
+                                OSCCommand::SendChat{ 
+                                    contents: "".to_string(),
+                                    immediately: true,
+                                }).await.unwrap();
+                    }
+                } else {
+                    tx.send(OSCCommand::SendChat { contents: text, immediately: true }).await.unwrap();
+                }
+
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
             }
         });
     }
