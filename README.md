@@ -22,4 +22,4 @@ $ cargo build --release
 `target/release/vrc_chat_bridge`がプログラム本体です。
 
 ## ライセンス
-MIT
+GPLv3
